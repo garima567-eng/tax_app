@@ -25,7 +25,6 @@ def load_and_train_backend_model():
     df['Filing_Delay_Days'] = np.random.poisson(lam=3, size=n_claims)
     df['Is_Fraud'] = 0
     
-    # Inject 60 fraud outliers
     fraud_indices = np.random.choice(df.index, size=60, replace=False)
     df.loc[fraud_indices, 'Refund_Requested'] = df.loc[fraud_indices, 'Turnover'] * np.random.uniform(0.25, 0.60)
     df.loc[fraud_indices, 'Supplier_Risk_Score'] = np.random.uniform(75, 99, size=60)
@@ -64,7 +63,6 @@ if app_mode == "Single Claim Entry":
     input_supplier_score = st.sidebar.slider("Supplier Risk Index", 0, 100, 25, help="Vendor non-compliance tier.")
     input_delay = st.sidebar.slider("Filing Delay Window (Days)", 0, 30, 2, help="Days past deadline baseline.")
     
-    # Mathematical computation fallback
     computed_ratio = float(input_refund) / float(input_turnover)
 
 else:
