@@ -52,9 +52,12 @@ app_mode = st.sidebar.radio("Navigation", ["Single Claim Entry", "Bulk Spreadshe
 if app_mode == "Single Claim Entry":
     st.sidebar.markdown("---")
     st.sidebar.subheader("📋 Manual Input Fields")
-    input_tin = st.sidebar.text_input("Dealer Identification Number", value="TIN-883492")
-    input_turnover = st.sidebar.number_input("Annual Gross Turnover (INR)", min_value=100000, value=2500000, step=50000)
-    input_refund = st.sidebar.number_input("Refund Requested Amount (INR)", min_value=1000, value=150000, step=10000)
+    input_tin = st.sidebar.text_input("Dealer Identification Number", value="TIN-883492",
+                                      help="A unique 14-digit code issued by banks for foreign exchange, or a region-specific alpha-numeric code used by transport departments to authorize motor vehicle dealers.")
+    input_turnover = st.sidebar.number_input("Annual Gross Turnover (INR)", min_value=100000, value=2500000, step=50000,
+                                             help="The total revenue a business generates from its core sales over a 12-month period, before any expenses, taxes, or deductions")
+    input_refund = st.sidebar.number_input("Refund Requested Amount (INR)", min_value=1000, value=150000, step=10000
+                                           ,help="Measures the refund scale against gross turnover. Normal baselines range between 2% and 8%; spikes above 25% indicate aggressive structural tax risk.")
     
     st.sidebar.markdown("---")
     st.sidebar.subheader("🎯 Behavioral Metrics")
@@ -75,7 +78,6 @@ st.markdown("---")
 
 if app_mode == "Single Claim Entry":
     
-    # Process predictions for the individual application
     live_features = pd.DataFrame([{
         'Claim_to_Turnover_Ratio': float(computed_ratio),
         'Supplier_Risk_Score': float(input_supplier_score),
@@ -88,13 +90,17 @@ if app_mode == "Single Claim Entry":
     with tab1:
         m1, m2, m3, m4 = st.columns(4)
         with m1:
-            st.metric(label="📊 Fraud Risk Probability", value=f"{fraud_probability * 100:.2f}%")
+            st.metric(label="📊 Fraud Risk Probability", value=f"{fraud_probability * 100:.2f}%",
+                      help="ℹ️ **Description:** A dynamic metric used to measure the statistical probability that an activity, transaction, or application is fraudulent.")
         with m2:
-            st.metric(label="📈 Claim-to-Turnover Ratio", value=f"{computed_ratio * 100:.2f}%")
+            st.metric(label="📈 Claim-to-Turnover Ratio", value=f"{computed_ratio * 100:.2f}%",
+                      help="ℹ️ **Description:** Tracking financial compliance scale to catch tax evaders by checking what percentage of turnover is claimed back.")
         with m3:
-            st.metric(label="⚠️ Supplier Network Risk", value=f"{input_supplier_score}/100")
+            st.metric(label="⚠️ Supplier Network Risk", value=f"{input_supplier_score}/100",
+                      help="ℹ️ **Description:** Vulnerabilities in a multi-tier supply ecosystem—including operational, financial, cyber, and geopolitical threats.")
         with m4:
-            st.metric(label="⏳ Filing Latency Period", value=f"{input_delay} Days")
+            st.metric(label="⏳ Filing Latency Period", value=f"{input_delay} Days",
+                       help="ℹ️ **Description:** It refers to the delay between an exposure or procedure and a subsequent event or effect.")
             
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -129,10 +135,9 @@ if app_mode == "Single Claim Entry":
         fig, ax = plt.subplots(figsize=(11, 4))
         sns.scatterplot(
             data=historical_df, x='Claim_to_Turnover_Ratio', y='Supplier_Risk_Score', 
-            hue='Is_Fraud', palette={0: '#34495e', 1: '#e74c3c'}, alpha=0.35, ax=ax
+            hue='Is_Fraud', palette={0: '#45062a', 1: '#14dbf5'}, alpha=0.35, ax=ax
         )
-        # Land bright yellow tracker element
-        ax.scatter(computed_ratio, input_supplier_score, color='#f1c40f', edgecolor='black', s=250, marker='*', zorder=5)
+        ax.scatter(computed_ratio, input_supplier_score, color='#f51493', edgecolor='black', s=250, marker='*', zorder=5)
         ax.set_xlabel("Claim-to-Turnover Ratio")
         ax.set_ylabel("Supplier Risk Score")
         sns.despine(left=True, bottom=True)
@@ -148,7 +153,7 @@ if app_mode == "Single Claim Entry":
             'Relative Influence Weight': importances
         }).sort_values(by='Relative Influence Weight', ascending=True)
         
-        st.bar_chart(data=importance_df, x='Financial Attribute', y='Relative Influence Weight', color='#2b5c8f', use_container_width=True)
+        st.bar_chart(data=importance_df, x='Financial Attribute', y='Relative Influence Weight', color='#e897d6', use_container_width=True)
 
 else:
     st.subheader("📂 Batch File Triage Suite")
@@ -173,7 +178,8 @@ else:
                 st.metric(label="Total Bulk Applications Evaluated", value=len(batch_df))
             with c2:
                 total_holds = len(batch_df[batch_df['Triage_Action'] == 'HOLD & AUDIT'])
-                st.metric(label="High-Risk Transactions Frozen", value=total_holds, delta=f"{total_holds} Holds Triggered", delta_color="inverse")
+                st.metric(label="High-Risk Transactions Frozen", value=total_holds, delta=f"{total_holds} Holds Triggered", delta_color="inverse",
+                          help="ℹ️ **Description:** An immediate Audit Hold to freeze money before fraud happens.")
             
             st.markdown("### Previewing Scored Registry Output Grid:")
             st.dataframe(batch_df[['Turnover', 'Refund_Requested', 'Fraud_Probability', 'Triage_Action']].head(10), use_container_width=True)
