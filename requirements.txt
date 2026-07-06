@@ -1,6 +1,15 @@
+<<<<<<< Updated upstream
 streamlit
 pandas
 numpy
 scikit-learn
 matplotlib
 seaborn
+=======
+streamlit
+pandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+>>>>>>> Stashed changes

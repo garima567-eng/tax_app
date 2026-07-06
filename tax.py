@@ -5,26 +5,48 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
 
-st.set_page_config(
-    page_title="TaxRefund-Guard | Enterprise Compliance Platform", 
-    page_icon="🛡️",
-    layout="wide"
+# Set page configuration with premium dark/light branding
+st.set_page_config(page_title="TaxRefund-Guard | Compliance Engine", layout="wide", page_icon="🛡️")
+
+# --- CUSTOM CSS INJECTION FOR PREMIUM BRANDING & SLIDERS ---
+st.markdown(
+    """
+    <style>
+    /* Styling Streamlit metric containers */
+    [data-testid="stMetricContainer"] {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    /* Brand-specific customization for active slider tracks */
+    div[data-baseweb="slider"] [role="slider"] {
+        background-color: #1e3a8a !important; /* Premium Navy Blue */
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
+# --- MOCK MODEL TRAINING DATA FOREGROUND ---
+# In a real environment, this loads from a database or serialized pickle file (.pkl)
 @st.cache_resource
-def load_and_train_backend_model():
-    """Builds synthetic historical dataset and trains the Random Forest asset."""
-    np.random.seed(101)
-    n_claims = 2000
+def train_baseline_compliance_model():
+    np.random.seed(42)
+    n_records = 1000
     
-    turnover = np.random.exponential(scale=4000000, size=n_claims) + 200000
-    df = pd.DataFrame({'Turnover': turnover})
+    # Simulating real-world variables
+    itc_output_ratio = np.random.uniform(0.05, 0.95, n_records)
+    supplier_reconcile_rate = np.random.uniform(40, 100, n_records)
+    filing_latency_days = np.random.poisson(lam=3, size=n_records)
     
-    df['Refund_Requested'] = df['Turnover'] * np.random.uniform(0.02, 0.08, size=n_claims)
-    df['Supplier_Risk_Score'] = np.random.uniform(10, 40, size=n_claims)
-    df['Filing_Delay_Days'] = np.random.poisson(lam=3, size=n_claims)
-    df['Is_Fraud'] = 0
+    # Target label: 0 = Compliant, 1 = High-Risk Anomaly (Shell/Carousel indicator)
+    # Risk factor naturally spikes if ITC exceeds output tax and supplier data doesn't match
+    risk_score = (itc_output_ratio * 0.6) - (supplier_reconcile_rate / 100 * 0.5) + (filing_latency_days * 0.05)
+    risk_labels = (risk_score > 0.25).astype(int)
     
+<<<<<<< Updated upstream
     fraud_indices = np.random.choice(df.index, size=60, replace=False)
     df.loc[fraud_indices, 'Refund_Requested'] = df.loc[fraud_indices, 'Turnover'] * np.random.uniform(0.25, 0.60)
     df.loc[fraud_indices, 'Supplier_Risk_Score'] = np.random.uniform(75, 99, size=60)
@@ -36,28 +58,59 @@ def load_and_train_backend_model():
     features = ['Claim_to_Turnover_Ratio', 'Supplier_Risk_Score', 'Filing_Delay_Days']
     X = df[features]
     y = df['Is_Fraud']
+=======
+    X = pd.DataFrame({
+        'ITC_to_Output_Ratio': itc_output_ratio,
+        'Supplier_Reconcile_Rate': supplier_reconcile_rate,
+        'Filing_Latency_Days': filing_latency_days
+    })
+>>>>>>> Stashed changes
     
+    # Using balanced class weights to neutralize real-world sparse anomaly footprint (~3-5%)
     model = RandomForestClassifier(n_estimators=100, class_weight='balanced', random_state=42)
-    model.fit(X, y)
-    return model, df
+    model.fit(X, risk_labels)
+    return model
 
-risk_model, historical_df = load_and_train_backend_model()
+model = train_baseline_compliance_model()
 
-st.sidebar.title("🛠️ Platform Ingestion")
-st.sidebar.markdown("Choose your audit processing mode below:")
+# --- APP LAYOUT HEADER ---
+st.title("🛡️ TaxRefund-Guard: Machine Learning Compliance & Triage Engine")
+st.markdown(
+    "An AI-driven operational gateway translating statutory compliance anomalies into "
+    "automated administrative directives."
+)
+st.write("---")
 
-app_mode = st.sidebar.radio("Navigation", ["Single Claim Entry", "Bulk Spreadsheet Upload"])
+# --- SIDEBAR INTERACTIVE ENTRY CHANNEL (LIVE FEATURE INGESTION) ---
+st.sidebar.header("📥 Live Application Parameters")
+st.sidebar.markdown("Input data directly from the active filing registry to compute real-time risk triage.")
 
-if app_mode == "Single Claim Entry":
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📋 Manual Input Fields")
-    input_tin = st.sidebar.text_input("Dealer Identification Number", value="TIN-883492",
-                                      help="A unique 14-digit code issued by banks for foreign exchange, or a region-specific alpha-numeric code used by transport departments to authorize motor vehicle dealers.")
-    input_turnover = st.sidebar.number_input("Annual Gross Turnover (INR)", min_value=100000, value=2500000, step=50000,
-                                             help="The total revenue a business generates from its core sales over a 12-month period, before any expenses, taxes, or deductions")
-    input_refund = st.sidebar.number_input("Refund Requested Amount (INR)", min_value=1000, value=150000, step=10000
-                                           ,help="Measures the refund scale against gross turnover. Normal baselines range between 2% and 8%; spikes above 25% indicate aggressive structural tax risk.")
+input_itc_ratio = st.sidebar.slider(
+    "1. ITC-to-Output Tax Ratio",
+    min_value=0.0, max_value=2.0, value=0.4, step=0.05,
+    help="Measures Input Tax Credit claimed against output tax liability. Ratios exceeding 1.0 mean the company is claiming more tax back than it paid out, signaling a structural risk baseline."
+)
+
+input_reconcile_rate = st.sidebar.slider(
+    "2. GSTR-2B / Supplier Match Rate (%)",
+    min_value=0.0, max_value=100.0, value=94.5, step=0.5,
+    help="The percentage of input credit that successfully reconciles against tax invoices uploaded independently by your suppliers. Low scores drop hints about phantom shell invoices."
+)
+
+input_latency = st.sidebar.number_input(
+    "3. Statutory Filing Latency (Days)",
+    min_value=0, max_value=90, value=2, step=1,
+    help="The window of days between the mandatory government filing deadline and the actual operational upload timestamp."
+)
+
+# --- MAIN DASHBOARD CONTROL MATRIX ---
+tabs = st.tabs(["⚡ Live Triage Diagnostics", "📊 Explainable AI (XAI) Architecture", "📂 Batch Matrix Processing"])
+
+# --- TAB 1: LIVE DIAGNOSTICS ---
+with tabs[0]:
+    st.subheader("📋 Dynamic Risk Assessment & Enforcement Gateway")
     
+<<<<<<< Updated upstream
     st.sidebar.markdown("---")
     st.sidebar.subheader("🎯 Behavioral Metrics")
     input_supplier_score = st.sidebar.slider("Supplier Risk Index", 0, 100, 25, help="Vendor non-compliance tier.")
@@ -80,114 +133,91 @@ if app_mode == "Single Claim Entry":
         'Claim_to_Turnover_Ratio': float(computed_ratio),
         'Supplier_Risk_Score': float(input_supplier_score),
         'Filing_Delay_Days': float(input_delay)
+=======
+    # Compile the live entry vector
+    live_record = pd.DataFrame([{
+        'ITC_to_Output_Ratio': float(input_itc_ratio),
+        'Supplier_Reconcile_Rate': float(input_reconcile_rate),
+        'Filing_Latency_Days': float(input_latency)
+>>>>>>> Stashed changes
     }])
-    fraud_probability = float(risk_model.predict_proba(live_features)[0][1])
-
-    tab1, tab2, tab3 = st.tabs(["⚡ Live Triage Decision", "📊 Macro Visual Analytics", "🎯 Model Interpretability (XAI)"])
-
-    with tab1:
-        m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            st.metric(label="📊 Fraud Risk Probability", value=f"{fraud_probability * 100:.2f}%",
-                      help="ℹ️ **Description:** A dynamic metric used to measure the statistical probability that an activity, transaction, or application is fraudulent.")
-        with m2:
-            st.metric(label="📈 Claim-to-Turnover Ratio", value=f"{computed_ratio * 100:.2f}%",
-                      help="ℹ️ **Description:** Tracking financial compliance scale to catch tax evaders by checking what percentage of turnover is claimed back.")
-        with m3:
-            st.metric(label="⚠️ Supplier Network Risk", value=f"{input_supplier_score}/100",
-                      help="ℹ️ **Description:** Vulnerabilities in a multi-tier supply ecosystem—including operational, financial, cyber, and geopolitical threats.")
-        with m4:
-            st.metric(label="⏳ Filing Latency Period", value=f"{input_delay} Days",
-                       help="ℹ️ **Description:** It refers to the delay between an exposure or procedure and a subsequent event or effect.")
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        if fraud_probability > 0.75:
-            st.markdown(
-                f'<div style="border-left: 6px solid #d9383a; background-color: #fdf2f2; padding: 20px; border-radius: 6px;">'
-                f'<h3 style="color: #d9383a; margin: 0; font-family: sans-serif;">🚨 CRITICAL AUDIT STATUS: DISBURSEMENT HELD</h3>'
-                f'<p style="color: #2c3e50; margin-top: 10px; font-size: 15px;">'
-                f'The application submitted by <strong>{input_tin}</strong> shows high structural correlation with known invoice fraud networks. '
-                f'Financial transfer halted pending a physical field examination.</p>'
-                f'</div>', unsafe_allow_html=True
-            )
-        elif fraud_probability > 0.30:
-            st.markdown(
-                f'<div style="border-left: 6px solid #f39c12; background-color: #fef9e7; padding: 20px; border-radius: 6px;">'
-                f'<h3 style="color: #e67e22; margin: 0; font-family: sans-serif;">⚠️ WARNING: DESK VERIFICATION ESCALATION</h3>'
-                f'<p style="color: #2c3e50; margin-top: 10px; font-size: 15px;">'
-                f'Moderate behavioral variance detected. Clear this claim only after an internal officer reviews the uploaded invoice attachments manually.</p>'
-                f'</div>', unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                f'<div style="border-left: 6px solid #2ecc71; background-color: #eafaf1; padding: 20px; border-radius: 6px;">'
-                f'<h3 style="color: #27ae60; margin: 0; font-family: sans-serif;">✅ STATUS: GREEN CHANNELS AUTO-APPROVAL</h3>'
-                f'<p style="color: #2c3e50; margin-top: 10px; font-size: 15px;">'
-                f'Application profiles cleanly inside normal benchmarks. Automatically queued for instant automated bank clearance.</p>'
-                f'</div>', unsafe_allow_html=True
-            )
-
-    with tab2:
-        st.subheader("📊 Macro Distribution Plot Matrix")
-        fig, ax = plt.subplots(figsize=(11, 4))
-        sns.scatterplot(
-            data=historical_df, x='Claim_to_Turnover_Ratio', y='Supplier_Risk_Score', 
-            hue='Is_Fraud', palette={0: '#45062a', 1: '#14dbf5'}, alpha=0.35, ax=ax
-        )
-        ax.scatter(computed_ratio, input_supplier_score, color='#f51493', edgecolor='black', s=250, marker='*', zorder=5)
-        ax.set_xlabel("Claim-to-Turnover Ratio")
-        ax.set_ylabel("Supplier Risk Score")
-        sns.despine(left=True, bottom=True)
-        st.pyplot(fig)
-
-    with tab3:
-        st.subheader("🎯 Algorithmic Feature Importance (SHAP Approximation)")
-        st.caption("Extracted mathematical feature weights informing the underlying Random Forest decision forest trees.")
-        
-        importances = risk_model.feature_importances_
-        importance_df = pd.DataFrame({
-            'Financial Attribute': ['Claim/Turnover Ratio', 'Supplier Risk Index', 'Filing Delay Window'],
-            'Relative Influence Weight': importances
-        }).sort_values(by='Relative Influence Weight', ascending=True)
-        
-        st.bar_chart(data=importance_df, x='Financial Attribute', y='Relative Influence Weight', color='#e897d6', use_container_width=True)
-
-else:
-    st.subheader("📂 Batch File Triage Suite")
     
-    if uploaded_file is None:
-        st.info("💡 Pro Tip: Drop a `.csv` data table inside the sidebar uploader workspace to calculate multi-row triage matrices instantly.")
-    else:
-        batch_df = pd.read_csv(uploaded_file)
+    # Calculate inference probability
+    probability = model.predict_proba(live_record)[0][1]
+    
+    # Dashboard Grid metrics
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric(label="📊 Target Risk Probability", value=f"{probability * 100:.1f}%")
+    with c2:
+        st.metric(label="📈 Operational ITC Scale Factor", value=f"{input_itc_ratio:.2f}x")
+    with c3:
+        st.metric(label="🛡️ Supply Chain Reconciliation Integrity", value=f"{input_reconcile_rate:.1f}%")
         
+    st.write("### 🚨 System Directive Verdict")
+    
+    # Deterministic Triage Boundary Engine
+    if probability < 0.30:
+        st.success("🟢 **DIRECTIVE: AUTO-APPROVE (Low Risk Baseline)**")
+        st.info("Application falls within standard compliance thresholds. Clear ledger outlays immediately to maintain economic cash-flow velocity.")
+    elif 0.30 <= probability <= 0.75:
+        st.warning("🟠 **DIRECTIVE: DESK REVIEW INTERCEPT (Moderate Variance)**")
+        st.info("System intercepted variance anomalies. Claims held pending desktop verification of invoice records against ledger attachments.")
+    else:
+        st.error("🔴 **DIRECTIVE: AUDIT SYSTEM FREEZE (High-Risk Counterpart Alert)**")
+        st.info("Immediate transaction freeze ordered. Disbursal accounts locked out automatically. Priority field-enforcement inspection ticket has been generated.")
+
+# --- TAB 2: EXPLAINABLE AI ---
+with tabs[1]:
+    st.subheader("🔮 Algorithmic Model Transparency & Feature Influences")
+    st.markdown("Exposing underlying ensemble metrics to ensure audit trails remain fully transparent and legally defensible.")
+    
+    # Extract Feature Importances directly from the Random Forest weights
+    importances = model.feature_importances_
+    features = ['ITC to Output Ratio', 'Supplier Reconcile Rate', 'Filing Latency Window']
+    
+    fig, ax = plt.subplots(figsize=(6, 2.5))
+    sns.barplot(x=importances, y=features, palette="viridis", ax=ax)
+    ax.set_title("Global Feature Weight Allocation Matrix")
+    ax.set_xlabel("Relative Informational Gain Weight")
+    st.pyplot(fig)
+    
+    st.caption("ℹ️ **Data Science Footnote:** The chart maps feature weighting. High parameters signify that variance in that metric contributes heavily toward model decisions, effectively eliminating black-box opacity.")
+
+# --- TAB 3: BATCH PROCESSING ---
+with tabs[2]:
+    st.subheader("📥 Mass Registry Drag-and-Drop Uploader")
+    st.markdown("Run asynchronous vector evaluation over complete daily department spreadsheets.")
+    
+    uploaded_file = st.file_uploader("Upload Daily Registry CSV File", type="csv")
+    
+    if uploaded_file is not None:
         try:
-            batch_df['Claim_to_Turnover_Ratio'] = batch_df['Refund_Requested'].astype(float) / batch_df['Turnover'].astype(float)
+            batch_df = pd.read_csv(uploaded_file)
             
-            features_list = ['Claim_to_Turnover_Ratio', 'Supplier_Risk_Score', 'Filing_Delay_Days']
-            batch_df['Fraud_Probability'] = risk_model.predict_proba(batch_df[features_list])[:, 1]
-            
-            batch_df['Triage_Action'] = np.where(batch_df['Fraud_Probability'] > 0.75, 'HOLD & AUDIT', 'AUTO-APPROVE')
-            
-            st.success("✅ Complete Batch Records Scored Successfully!")
-            
-            c1, c2 = st.columns(2)
-            with c1:
-                st.metric(label="Total Bulk Applications Evaluated", value=len(batch_df))
-            with c2:
-                total_holds = len(batch_df[batch_df['Triage_Action'] == 'HOLD & AUDIT'])
-                st.metric(label="High-Risk Transactions Frozen", value=total_holds, delta=f"{total_holds} Holds Triggered", delta_color="inverse",
-                          help="ℹ️ **Description:** An immediate Audit Hold to freeze money before fraud happens.")
-            
-            st.markdown("### Previewing Scored Registry Output Grid:")
-            st.dataframe(batch_df[['Turnover', 'Refund_Requested', 'Fraud_Probability', 'Triage_Action']].head(10), use_container_width=True)
-            
-            hold_records = batch_df[batch_df['Triage_Action'] == 'HOLD & AUDIT']
-            st.download_button(
-                label="📥 Download Priority Field Audit Target List",
-                data=hold_records.to_csv(index=False),
-                file_name="priority_hold_audit_registry.csv",
-                mime="text/csv"
-            )
+            # Real-world structural validation check
+            required_cols = ['ITC_to_Output_Ratio', 'Supplier_Reconcile_Rate', 'Filing_Latency_Days']
+            if all(col in batch_df.columns for col in required_cols):
+                # Predict over complete matrix
+                predictions = model.predict(batch_df[required_cols])
+                probabilities = model.predict_proba(batch_df[required_cols])[:, 1]
+                
+                batch_df['Risk_Probability'] = probabilities
+                batch_df['System_Verdict'] = np.where(probabilities < 0.30, 'Auto-Approve', 
+                                                     np.where(probabilities <= 0.75, 'Desk Review', 'Audit Freeze'))
+                
+                st.write("### 📊 Processed Registry Matrix Overview")
+                st.dataframe(batch_df.head(10), use_container_width=True)
+                
+                # Summary Aggregations
+                st.markdown("#### 📈 Registry Distribution Summary")
+                counts = batch_df['System_Verdict'].value_counts()
+                st.bar_chart(counts)
+            else:
+                st.error(f"❌ Schema Validation Error: Verify that your columns exactly match: {required_cols}")
         except Exception as e:
+<<<<<<< Updated upstream
             st.error(f"Schema Validation Error: Verify that your columns exactly match: 'Turnover', 'Refund_Requested', 'Supplier_Risk_Score', 'Filing_Delay_Days'. Error details: {e}")
+=======
+            st.error(f"Error parsing structural registry file: {e}")
+>>>>>>> Stashed changes
