@@ -190,4 +190,4 @@ else:
                 mime="text/csv"
             )
         except Exception as e:
-            st.error(f"Schema Validation Error: Verify that your columns exactly match: 'Turnover', 'Refund_Requested', 'Supplier_Risk_Score', 'Filing_Delay_Days'. Error details: {e}")
+            st.error(f"Schema Validation Error: Verify that your columns exactly match:'Turnover', 'Refund_Requested', 'Supplier_Risk_Score', 'Filing_Delay_Days'. Error details: {e}")
